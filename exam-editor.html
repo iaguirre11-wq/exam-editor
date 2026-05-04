@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exam Editor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f3ee;
+    --surface: #ffffff;
+    --border: #d8d4cc;
+    --border-strong: #b0aa9f;
+    --text: #1a1917;
+    --text-muted: #6b6760;
+    --accent: #2b5fa6;
+    --danger: #a62b2b;
+    --success: #2b6b3a;
+  }
+
+  body {
+    font-family: "Times New Roman", Times, serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #editor-wrap {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    padding: 32px;
+    background: var(--bg);
+  }
+
+  #editor {
+    flex: 1;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 14px;
+    line-height: 2;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 32px 40px;
+    background: var(--surface);
+    color: var(--text);
+    resize: none;
+    outline: none;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    tab-size: 4;
+    -moz-tab-size: 4;
+    spellcheck: false;
+  }
+  #editor:focus { border-color: var(--border-strong); }
+
+  /* STATUS BAR */
+  #statusbar {
+    height: 30px;
+    background: var(--surface);
+    border-top: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 24px;
+    font-size: 11px;
+    font-family: "Times New Roman", Times, serif;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  #statusbar b { font-weight: 600; color: var(--text); }
+  #save-status { margin-left: auto; font-weight: 500; }
+
+  /* ESC MENU */
+  #esc-overlay {
+    position: fixed; inset: 0;
+    background: rgba(20,19,17,0.55);
+    backdrop-filter: blur(3px);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s;
+  }
+  #esc-overlay.open { opacity: 1; pointer-events: all; }
+
+  #esc-panel {
+    background: var(--surface);
+    border: 1.5px solid var(--border-strong);
+    border-radius: 14px;
+    width: 600px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: translateY(10px);
+    transition: transform 0.18s;
+    font-family: "Times New Roman", Times, serif;
+  }
+  #esc-overlay.open #esc-panel { transform: translateY(0); }
+
+  #esc-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px 14px;
+    border-bottom: 1.5px solid var(--border);
+  }
+  #esc-panel-header h2 { font-size: 14px; font-weight: 600; letter-spacing: 0.04em; }
+  #esc-panel-header .hint { font-size: 11px; color: var(--text-muted); }
+
+  .esc-section { padding: 18px 24px; border-bottom: 1.5px solid var(--border); }
+  .esc-section:last-child { border-bottom: none; }
+  .esc-section h3 {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;
+  }
+
+  .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px,1fr)); gap: 8px; }
+
+  .action-btn {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 12px; font-weight: 500;
+    border: 1.5px solid var(--border);
+    background: var(--bg); color: var(--text);
+    border-radius: 8px; padding: 10px 12px;
+    cursor: pointer; text-align: left;
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .action-btn:hover { background: #e8eef8; border-color: var(--accent); color: var(--accent); }
+  .action-btn:active { transform: scale(0.98); }
+  .action-btn .ab-label { display: block; }
+  .action-btn .ab-shortcut { font-size: 10px; color: var(--text-muted); display: block; margin-top: 3px; }
+  .action-btn.primary-action { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .action-btn.primary-action:hover { background: #1e4a8a; }
+  .action-btn.primary-action .ab-shortcut { color: rgba(255,255,255,0.65); }
+
+  .slider-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
+  .slider-row label {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--text-muted); font-weight: 500; margin-bottom: 5px;
+  }
+  .slider-row label span { color: var(--text); font-weight: 600; }
+  .slider-row input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+
+  .tab-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .tab-row label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .tab-row select {
+    font-family: "Times New Roman", Times, serif; font-size: 12px;
+    border: 1.5px solid var(--border); border-radius: 6px;
+    padding: 4px 8px; background: var(--bg); color: var(--text); outline: none; cursor: pointer;
+  }
+
+  #print-area { display: none; }
+  @media print {
+    body > *:not(#print-area) { display: none !important; }
+    #print-area { display: block !important; position: fixed; inset: 0; white-space: pre-wrap; word-wrap: break-word; }
+  }
+</style>
+</head>
+<body>
+
+<div id="editor-wrap">
+  <textarea id="editor"
+    spellcheck="false"
+    autocorrect="off"
+    autocapitalize="off"
+    autocomplete="off"
+  ></textarea>
+</div>
+
+<div id="statusbar">
+  <span>Words: <b id="word-count">0</b></span>
+  <span>Chars: <b id="char-count">0</b></span>
+  <span>Lines: <b id="line-count">1</b></span>
+  <span id="save-status">Press Esc for menu</span>
+</div>
+
+<!-- ESC MENU -->
+<div id="esc-overlay">
+  <div id="esc-panel">
+    <div id="esc-panel-header">
+      <h2>Menu</h2>
+      <span class="hint">Esc to close</span>
+    </div>
+
+    <div class="esc-section">
+      <h3>File</h3>
+      <div class="action-grid">
+        <button class="action-btn" onclick="menuNew()">
+          <span class="ab-label">New</span>
+          <span class="ab-shortcut">Ctrl+N</span>
+        </button>
+        <button class="action-btn" onclick="menuOpen()">
+          <span class="ab-label">Open</span>
+          <span class="ab-shortcut">Ctrl+O</span>
+        </button>
+        <button class="action-btn primary-action" onclick="menuSave()">
+          <span class="ab-label">Save</span>
+          <span class="ab-shortcut">Ctrl+S</span>
+        </button>
+        <button class="action-btn" onclick="menuSaveAs()">
+          <span class="ab-label">Save As</span>
+          <span class="ab-shortcut">Ctrl+Shift+S</span>
+        </button>
+        <button class="action-btn" onclick="menuPrint()">
+          <span class="ab-label">Print</span>
+          <span class="ab-shortcut">Ctrl+P</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="esc-section">
+      <h3>Editor</h3>
+      <div class="slider-grid">
+        <div class="slider-row">
+          <label>Font Size <span id="efs-val">14</span>px</label>
+          <input type="range" min="10" max="24" value="14" id="editor-font-size" oninput="updateEditorSettings()">
+        </div>
+        <div class="slider-row">
+          <label>Line Height <span id="elh-val">2.0</span></label>
+          <input type="range" min="1" max="3" step="0.1" value="2.0" id="editor-line-height" oninput="updateEditorSettings()">
+        </div>
+      </div>
+      <div class="tab-row">
+        <label>Tab Size</label>
+        <select id="tab-size">
+          <option value="2">2 spaces</option>
+          <option value="4" selected>4 spaces</option>
+          <option value="8">8 spaces</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="esc-section">
+      <h3>Print Formatting</h3>
+      <div class="slider-grid">
+        <div class="slider-row">
+          <label>Font Size <span id="fs-val">14</span>px</label>
+          <input type="range" min="10" max="24" value="14" id="print-font-size" oninput="updatePrintSettings()">
+        </div>
+        <div class="slider-row">
+          <label>Line Height <span id="lh-val">1.8</span></label>
+          <input type="range" min="1" max="3" step="0.1" value="1.8" id="print-line-height" oninput="updatePrintSettings()">
+        </div>
+        <div class="slider-row">
+          <label>Left Margin <span id="ml-val">20</span>mm</label>
+          <input type="range" min="5" max="50" value="20" id="print-ml" oninput="updatePrintSettings()">
+        </div>
+        <div class="slider-row">
+          <label>Right Margin <span id="mr-val">20</span>mm</label>
+          <input type="range" min="5" max="50" value="20" id="print-mr" oninput="updatePrintSettings()">
+        </div>
+        <div class="slider-row">
+          <label>Top Margin <span id="mt-val">20</span>mm</label>
+          <input type="range" min="5" max="50" value="20" id="print-mt" oninput="updatePrintSettings()">
+        </div>
+        <div class="slider-row">
+          <label>Bottom Margin <span id="mb-val">20</span>mm</label>
+          <input type="range" min="5" max="50" value="20" id="print-mb" oninput="updatePrintSettings()">
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="print-area"></div>
+<style id="print-style">
+@page { margin: 20mm; }
+#print-area { font-family: "Times New Roman", Times, serif; font-size: 14px; line-height: 1.8; }
+</style>
+
+<script>
+  const editor = document.getElementById('editor');
+  let currentFileName = 'Untitled.txt';
+  let fileHandle = null;
+  let isDirty = false;
+  let menuIsOpen = false;
+
+  const TEMPLATE =
+`Name: 
+Grade: 
+Teacher Name: 
+Date: 
+Exam: 
+
+`;
+
+  editor.value = TEMPLATE;
+  // Place cursor at end of "Name: "
+  const nameEnd = TEMPLATE.indexOf('\n');
+  editor.selectionStart = editor.selectionEnd = 6; // after "Name: "
+  updateStats();
+
+  // ── ESC MENU ──
+  function openMenu() {
+    menuIsOpen = true;
+    document.getElementById('esc-overlay').classList.add('open');
+  }
+  function closeMenu() {
+    menuIsOpen = false;
+    document.getElementById('esc-overlay').classList.remove('open');
+    editor.focus();
+  }
+
+  document.getElementById('esc-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeMenu();
+  });
+
+  // ── KEYBOARD ──
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      menuIsOpen ? closeMenu() : openMenu();
+      return;
+    }
+    if (menuIsOpen) return;
+
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const tabSize = parseInt(document.getElementById('tab-size').value);
+      const spaces = ' '.repeat(tabSize);
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      if (start === end) {
+        editor.value = editor.value.slice(0, start) + spaces + editor.value.slice(end);
+        editor.selectionStart = editor.selectionEnd = start + tabSize;
+      } else {
+        const before = editor.value.slice(0, start);
+        const selected = editor.value.slice(start, end);
+        const after = editor.value.slice(end);
+        const indented = selected.split('\n').map(l => spaces + l).join('\n');
+        editor.value = before + indented + after;
+        editor.selectionStart = start;
+        editor.selectionEnd = start + indented.length;
+      }
+      markDirty(); return;
+    }
+    if ((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); e.shiftKey ? menuSaveAs() : menuSave(); return; }
+    if ((e.ctrlKey||e.metaKey) && e.key==='o') { e.preventDefault(); menuOpen(); return; }
+    if ((e.ctrlKey||e.metaKey) && e.key==='p') { e.preventDefault(); menuPrint(); return; }
+    if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); menuNew(); return; }
+  });
+
+  editor.addEventListener('input', () => { markDirty(); updateStats(); });
+
+  function markDirty() {
+    isDirty = true;
+    const s = document.getElementById('save-status');
+    s.textContent = 'Unsaved'; s.style.color = 'var(--danger)';
+  }
+  function markClean() {
+    isDirty = false;
+    const s = document.getElementById('save-status');
+    s.textContent = 'Saved'; s.style.color = 'var(--success)';
+  }
+  function updateStats() {
+    const t = editor.value;
+    document.getElementById('word-count').textContent = t.trim()==='' ? 0 : t.trim().split(/\s+/).length;
+    document.getElementById('char-count').textContent = t.length;
+    document.getElementById('line-count').textContent = t.split('\n').length;
+  }
+
+  // ── FILE ACTIONS ──
+  function menuNew() {
+    closeMenu();
+    if (isDirty && !confirm('Unsaved changes will be lost. Continue?')) return;
+    editor.value = TEMPLATE;
+    editor.selectionStart = editor.selectionEnd = 6;
+    currentFileName = 'Untitled.txt'; fileHandle = null; isDirty = false;
+    document.getElementById('save-status').textContent = 'Press Esc for menu';
+    document.getElementById('save-status').style.color = '';
+    updateStats(); editor.focus();
+  }
+
+  async function menuOpen() {
+    closeMenu();
+    try {
+      if (window.showOpenFilePicker) {
+        [fileHandle] = await window.showOpenFilePicker({
+          types: [{ description: 'Text Files', accept: { 'text/plain': ['.txt'] } }]
+        });
+        const file = await fileHandle.getFile();
+        editor.value = await file.text();
+        currentFileName = file.name;
+      } else {
+        const input = document.createElement('input');
+        input.type='file'; input.accept='.txt,text/plain';
+        input.onchange = async (e) => {
+          const file = e.target.files[0]; if (!file) return;
+          editor.value = await file.text();
+          currentFileName = file.name; fileHandle = null;
+          markClean(); updateStats();
+        };
+        input.click(); return;
+      }
+      markClean(); updateStats(); editor.focus();
+    } catch(err) { if (err.name!=='AbortError') alert('Could not open: '+err.message); }
+  }
+
+  async function menuSave() {
+    if (fileHandle) {
+      try {
+        const w = await fileHandle.createWritable();
+        await w.write(editor.value); await w.close();
+        markClean(); closeMenu();
+      } catch(err) { alert('Could not save: '+err.message); }
+    } else { await menuSaveAs(); }
+  }
+
+  async function menuSaveAs() {
+    try {
+      if (window.showSaveFilePicker) {
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: currentFileName,
+          types: [{ description: 'Text File', accept: { 'text/plain': ['.txt'] } }]
+        });
+        const w = await fileHandle.createWritable();
+        await w.write(editor.value); await w.close();
+        const file = await fileHandle.getFile();
+        currentFileName = file.name;
+        markClean(); closeMenu();
+      } else {
+        const blob = new Blob([editor.value], {type:'text/plain'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href=url; a.download=currentFileName; a.click();
+        URL.revokeObjectURL(url); markClean(); closeMenu();
+      }
+    } catch(err) { if (err.name!=='AbortError') alert('Could not save: '+err.message); }
+  }
+
+  function menuPrint() {
+    closeMenu();
+    const pa = document.getElementById('print-area');
+    pa.textContent = editor.value; pa.style.display='block';
+    setTimeout(() => { window.print(); pa.style.display='none'; }, 100);
+  }
+
+  function updateEditorSettings() {
+    const fs = document.getElementById('editor-font-size').value;
+    const lh = parseFloat(document.getElementById('editor-line-height').value).toFixed(1);
+    document.getElementById('efs-val').textContent = fs;
+    document.getElementById('elh-val').textContent = lh;
+    editor.style.fontSize = fs+'px';
+    editor.style.lineHeight = lh;
+  }
+
+  function updatePrintSettings() {
+    const fs=document.getElementById('print-font-size').value;
+    const lh=parseFloat(document.getElementById('print-line-height').value).toFixed(1);
+    const ml=document.getElementById('print-ml').value;
+    const mr=document.getElementById('print-mr').value;
+    const mt=document.getElementById('print-mt').value;
+    const mb=document.getElementById('print-mb').value;
+    document.getElementById('fs-val').textContent=fs;
+    document.getElementById('lh-val').textContent=lh;
+    document.getElementById('ml-val').textContent=ml;
+    document.getElementById('mr-val').textContent=mr;
+    document.getElementById('mt-val').textContent=mt;
+    document.getElementById('mb-val').textContent=mb;
+    document.getElementById('print-style').textContent=
+      `@page{margin-top:${mt}mm;margin-bottom:${mb}mm;margin-left:${ml}mm;margin-right:${mr}mm;}
+#print-area{font-family:'IBM Plex Mono',monospace;font-size:${fs}px;line-height:${lh};}`;
+  }
+
+  window.addEventListener('beforeunload', (e) => {
+    if (isDirty) { e.preventDefault(); e.returnValue=''; }
+  });
+
+  editor.focus();
+</script>
+</body>
+</html>
