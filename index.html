@@ -22,7 +22,7 @@
   }
 
   body {
-    font-family: "Times New Roman", Times, serif;
+    font-family: 'IBM Plex Mono', monospace;
     background: var(--bg);
     color: var(--text);
     height: 100vh;
@@ -41,7 +41,7 @@
 
   #editor {
     flex: 1;
-    font-family: "Times New Roman", Times, serif;
+    font-family: 'IBM Plex Mono', monospace;
     font-size: 14px;
     line-height: 2;
     border: 1.5px solid var(--border);
@@ -70,7 +70,7 @@
     padding: 0 20px;
     gap: 24px;
     font-size: 11px;
-    font-family: "Times New Roman", Times, serif;
+    font-family: 'IBM Plex Mono', monospace;
     color: var(--text-muted);
     flex-shrink: 0;
   }
@@ -102,7 +102,7 @@
     overflow-y: auto;
     transform: translateY(10px);
     transition: transform 0.18s;
-    font-family: "Times New Roman", Times, serif;
+    font-family: 'IBM Plex Mono', monospace;
   }
   #esc-overlay.open #esc-panel { transform: translateY(0); }
 
@@ -126,7 +126,7 @@
   .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px,1fr)); gap: 8px; }
 
   .action-btn {
-    font-family: "Times New Roman", Times, serif;
+    font-family: 'IBM Plex Mono', monospace;
     font-size: 12px; font-weight: 500;
     border: 1.5px solid var(--border);
     background: var(--bg); color: var(--text);
@@ -153,7 +153,7 @@
   .tab-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
   .tab-row label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
   .tab-row select {
-    font-family: "Times New Roman", Times, serif; font-size: 12px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
     border: 1.5px solid var(--border); border-radius: 6px;
     padding: 4px 8px; background: var(--bg); color: var(--text); outline: none; cursor: pointer;
   }
@@ -275,7 +275,7 @@
 <div id="print-area"></div>
 <style id="print-style">
 @page { margin: 20mm; }
-#print-area { font-family: "Times New Roman", Times, serif; font-size: 14px; line-height: 1.8; }
+#print-area { font-family: 'IBM Plex Mono', monospace; font-size: 14px; line-height: 1.8; }
 </style>
 
 <script>
@@ -477,6 +477,9 @@ Exam:
   });
 
   editor.focus();
+
+  // Block right-click and long-press context menu
+  document.addEventListener('contextmenu', e => e.preventDefault());
 </script>
 </body>
 </html>
