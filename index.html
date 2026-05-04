@@ -478,8 +478,14 @@ Exam:
 
   editor.focus();
 
-  // Block right-click and long-press context menu
+  // Block right-click, two-finger tap, and long-press context menu
   document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('pointerdown', e => { if (e.button === 2) e.preventDefault(); });
+  document.addEventListener('pointerup', e => { if (e.button === 2) e.preventDefault(); });
+  document.addEventListener('mousedown', e => { if (e.button === 2) e.preventDefault(); });
+  document.addEventListener('mouseup', e => { if (e.button === 2) e.preventDefault(); });
+  document.addEventListener('touchstart', e => { if (e.touches.length === 2) e.preventDefault(); }, { passive: false });
+  document.addEventListener('touchend', e => { if (e.touches.length === 2) e.preventDefault(); }, { passive: false });
 </script>
 </body>
 </html>
